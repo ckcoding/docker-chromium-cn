@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 - Chromium Desktop</title>
-    <!-- Prevent caching to ensure updates are applied -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -39,7 +38,6 @@
             width: 64px;
             height: 64px;
             margin-bottom: 24px;
-            /* If icon fails to load, show a placeholder box */
             background: #e6f7ff;
             border-radius: 12px;
             object-fit: contain;
@@ -127,7 +125,7 @@
     <div class="login-wrapper">
         <div class="login-container">
             <img src="icon.png" alt="Logo" class="logo" onerror="this.src='/favicon.ico'">
-            <h2>登录系统</h2>
+            <h2>登录系统 (Auth)</h2>
             <form id="loginForm">
                 <div class="input-group">
                     <label for="username">用户名</label>
@@ -144,7 +142,7 @@
             </form>
         </div>
         <div class="footer">
-            Chromium Desktop Container
+            Chromium Desktop - Security
         </div>
     </div>
 
@@ -162,18 +160,15 @@
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
 
-            // Handle Unicode characters correctly for Base64 (though Basic Auth is standardly ISO)
-            // We use standard btoa assuming password is safe, or simple encode
             let creds;
             try {
                 creds = btoa(user + ':' + pass);
             } catch (err) {
-                // Fallback for unicode if needed
                 creds = btoa(unescape(encodeURIComponent(user + ':' + pass)));
             }
 
             try {
-                // Attempt to fetch root resource with credentials
+                // First verify credentials via fetch
                 const response = await fetch('/', {
                     method: 'GET',
                     headers: {
@@ -181,18 +176,23 @@
                     }
                 });
 
-                // 200 OK means access granted (or 404/others but authorized)
-                // 401 means failed
                 if (response.status !== 401) {
-                    // Success! Browser should store the realm credentials in memory.
-                    // Force reload to bypass cache and load the real page.
-                    window.location.href = '/';
+                    // Success! 
+                    // CRITICAL: We must force the browser to store these credentials 
+                    // or use them for the main navigation. 
+                    // Standard window.location.href = '/' fails to persist auth state in some browsers.
+
+                    // Try the username:password@host url scheme
+                    const protocol = window.location.protocol;
+                    const host = window.location.host;
+                    // Use replace to avoid history loops
+                    window.location.replace(`${protocol}//${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${host}/`);
                 } else {
                     throw new Error('Unauthorized');
                 }
             } catch (err) {
                 console.error(err);
-                errorMsg.textContent = '用户名或密码错误，请重试';
+                errorMsg.textContent = '验证失败，请检查用户名密码';
                 submitBtn.disabled = false;
                 submitBtn.textContent = '登 录';
             }

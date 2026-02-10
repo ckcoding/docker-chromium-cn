@@ -72,19 +72,14 @@ RUN \
   sed -i 's/navigator.language/"zh-CN"/g' /usr/share/selkies/web/assets/index-*.js 2>/dev/null || true
 
 # Copy built localized dashboard from builder stage
-# Original dashboard location: /usr/share/selkies/selkies-dashboard/
-# Original web ui location: /usr/share/selkies/web/
-# We assume dashboard assets are shared/compatible with web ui assets
+# Copy built localized dashboard
 COPY --from=builder /app/dist /usr/share/selkies/selkies-dashboard/
 
-# Also copy assets AND index.html to web directory to ensure both UIs use localized version
-# And fix permissions to avoid 403 Forbidden errors
-RUN cp -r /usr/share/selkies/selkies-dashboard/* /usr/share/selkies/web/ || true && \
-    chown -R www-data:www-data /usr/share/selkies || true && \
-    chmod -R 755 /usr/share/selkies/
+# Also attempting to update web assets if they are identical
+RUN cp -r /usr/share/selkies/selkies-dashboard/assets/* /usr/share/selkies/web/assets/ || true
 
 # add local files
-COPY /root /
+COPY root/ /
 
 # ports and volumes
 EXPOSE 3000
