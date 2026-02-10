@@ -1,0 +1,29 @@
+services:
+  chromium-cn:
+    build: .
+    container_name: chromium-cn
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+      - CUSTOM_USER=user
+      - PASSWORD=password
+      - TITLE=Chromium 浏览器
+      - LC_ALL=zh_CN.UTF-8
+      - LANG=zh_CN.UTF-8
+      - LANGUAGE=zh_CN:zh
+      # Selkies 性能优化
+      - SELKIES_ENCODER=jpeg,nvh264enc,vah264enc,x264enc
+      - SELKIES_FRAMERATE=30-60
+      - SELKIES_QUALITY=60
+      # 界面定制
+      - SELKIES_UI_TITLE=Chromium 浏览器
+    volumes:
+      - ./config:/config
+      - /dev/shm:/dev/shm
+    ports:
+      - "1234:3000"
+      - "1235:3001"
+    restart: unless-stopped

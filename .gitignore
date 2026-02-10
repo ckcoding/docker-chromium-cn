@@ -1,1 +1,6 @@
 .jenkins-external
+/config/.cache
+/config/.config
+/config/.local
+/config/.pki
+/config/.dbus

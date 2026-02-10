@@ -1,15 +1,20 @@
 # syntax=docker/dockerfile:1
 
-FROM ghcr.io/linuxserver/baseimage-selkies:arm64v8-debiantrixie
+FROM ghcr.io/linuxserver/baseimage-selkies:debiantrixie-aarch64
 
 # set version label
 ARG BUILD_DATE
 ARG VERSION
-LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="thelamer"
+LABEL build_version="docker-chromium-cn version:- ${VERSION} Build-date:- ${BUILD_DATE}"
+LABEL maintainer="ckcoding"
 
 # title
 ENV TITLE=Chromium
+
+# Chinese locale
+ENV LC_ALL=zh_CN.UTF-8
+ENV LANG=zh_CN.UTF-8
+ENV LANGUAGE=zh_CN:zh
 
 RUN \
   echo "**** add icon ****" && \
@@ -20,7 +25,18 @@ RUN \
   apt-get update && \
   apt-get install -y --no-install-recommends \
     chromium \
-    chromium-l10n && \
+    chromium-l10n \
+    fonts-noto-cjk \
+    fonts-noto-cjk-extra \
+    fonts-wqy-microhei \
+    fonts-wqy-zenhei \
+    ibus \
+    ibus-pinyin && \
+  echo "**** generate zh_CN locale ****" && \
+  sed -i '/zh_CN.UTF-8/s/^# //g' /etc/locale.gen 2>/dev/null || true && \
+  locale-gen zh_CN.UTF-8 2>/dev/null || true && \
+  echo "**** force chinese language for selkies dashboard ****" && \
+  sed -i 's/navigator.language/"zh-CN"/g' /usr/share/selkies/web/assets/index-*.js 2>/dev/null || true && \
   echo "**** cleanup ****" && \
   apt-get autoclean && \
   rm -rf \
