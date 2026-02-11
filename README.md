@@ -1,153 +1,84 @@
 # Docker Chromium 中文版
 
-基于 [LinuxServer.io Chromium](https://github.com/linuxserver/docker-chromium) 镜像，使用 [Selkies](https://github.com/selkies-project/selkies) WebRTC 技术提供高性能远程浏览器体验。
+基于 LinuxServer Chromium + Selkies 的中文远程浏览器镜像，默认中文界面，支持密码登录页（仅输入密码）。
 
-**完整中文汉化**，支持 x86_64 和 ARM64 架构。
+- 镜像：`ckcode/chromium-cn:latest`
+- 架构：`amd64` / `arm64`
+- 默认端口：`1234`(HTTP) / `1235`(HTTPS)
 
-## ✨ 特性
+## 快速开始
 
-- 🌐 **Web 界面完全中文化** — Selkies Dashboard 侧边栏、设置项全部中文显示
-- 🖥️ **Chromium 中文界面** — 浏览器启动即为中文语言
-- 🔤 **中文字体齐全** — 预装 Noto CJK、文泉驿等多款中文字体
-- ⌨️ **中文输入法支持** — 内置 IBus 拼音输入法
-- 🎨 **精美登录页** — 默认使用自定义中文登录页面（仅输入密码）
-- 🚀 **高性能** — 基于 WebRTC，低延迟远程桌面
-- 📱 **多设备** — 手机、平板、电脑均可访问
-- 🏗️ **多架构** — 支持 x86_64 / ARM64 (aarch64)
-
-## 📸 截图
-
-部署后打开浏览器访问 `http://你的IP:3000` 即可看到完整中文界面。
-
-## 🚀 快速开始
-
-📘 详细部署步骤、运维命令与发布流程见：[`DEPLOYMENT.md`](DEPLOYMENT.md)
-
-### 使用 Docker Compose（推荐）
-
-```bash
-git clone https://github.com/你的用户名/docker-chromium-cn.git
-cd docker-chromium-cn
-docker compose up -d
-```
-
-### 使用 Docker Run
+### 方式 1：直接运行（推荐）
 
 ```bash
 docker run -d \
-  --name=chromium-cn \
+  --name chromium-cn \
   --security-opt seccomp=unconfined \
   -e PUID=1000 \
   -e PGID=1000 \
   -e TZ=Asia/Shanghai \
   -e CUSTOM_USER=user \
-  -e PASSWORD=password \
-  -e TITLE="Chromium 浏览器" \
+  -e PASSWORD='请改成强密码' \
+  -e TITLE='Chromium 浏览器' \
   -e LC_ALL=zh_CN.UTF-8 \
   -e LANG=zh_CN.UTF-8 \
   -e LANGUAGE=zh_CN:zh \
-  -p 3000:3000 \
-  -p 3001:3001 \
-  -v /path/to/config:/config \
-  -v /dev/shm:/dev/shm \
+  -e SELKIES_UI_TITLE='Chromium 浏览器' \
+  -p 1234:3000 \
+  -p 1235:3001 \
+  -v $(pwd)/config:/config \
   --restart unless-stopped \
-  ghcr.io/你的用户名/chromium-cn:latest
+  ckcode/chromium-cn:latest
 ```
 
-### 访问
+### 方式 2：Docker Compose
 
-- **Web 界面**: `http://你的IP:1234`
-- **HTTPS 界面**: `https://你的IP:1235`
-- **默认用户名**: `user`
-- **默认密码**: `password`
-
-## ⚙️ 环境变量
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `PUID` | 用户 ID | `1000` |
-| `PGID` | 用户组 ID | `1000` |
-| `TZ` | 时区 | `Asia/Shanghai` |
-| `CUSTOM_USER` | 登录用户名 | `abc` |
-| `PASSWORD` | 登录密码 | 随机生成 |
-| `TITLE` | 页面标题 | `Chromium` |
-| `LC_ALL` | 系统语言 | `zh_CN.UTF-8` |
-| `CHROME_CLI` | Chromium 额外启动参数 | - |
-| `SELKIES_ENCODER` | 视频编码器 | `jpeg,nvh264enc,vah264enc,x264enc` |
-| `SELKIES_FRAMERATE` | 帧率范围 | `30-60` |
-| `SELKIES_QUALITY` | 画质 (1-100) | `60` |
-| `SELKIES_UI_TITLE` | 界面标题 | `Chromium` |
-
-### Selkies UI 显示控制
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `SELKIES_UI_SHOW_SIDEBAR` | 显示侧边栏 | `True` |
-| `SELKIES_UI_SIDEBAR_SHOW_VIDEO_SETTINGS` | 显示视频设置 | `True` |
-| `SELKIES_UI_SIDEBAR_SHOW_SCREEN_SETTINGS` | 显示屏幕设置 | `True` |
-| `SELKIES_UI_SIDEBAR_SHOW_AUDIO_SETTINGS` | 显示音频设置 | `True` |
-| `SELKIES_UI_SIDEBAR_SHOW_STATS` | 显示统计信息 | `True` |
-| `SELKIES_UI_SIDEBAR_SHOW_CLIPBOARD` | 显示剪贴板 | `True` |
-| `SELKIES_UI_SIDEBAR_SHOW_FILES` | 显示文件管理 | `True` |
-
-## 🌐 汉化范围
-
-### ✅ 已汉化
-
-| 组件 | 说明 |
-|------|------|
-| **Selkies Web 界面** | Dashboard 侧边栏、设置面板、按钮提示、通知消息等，默认中文并可在登录页切换语言 |
-| **Chromium 浏览器** | 通过 `--lang=zh-CN` 参数启动，界面为中文 |
-| **系统桌面** | 通过 `LC_ALL=zh_CN.UTF-8` 设置系统语言 |
-| **右键菜单** | 桌面右键菜单（终端、浏览器）已翻译为中文 |
-| **字体支持** | 预装 Noto CJK / 文泉驿等中文字体，确保中文正常显示 |
-| **输入法** | IBus 拼音输入法 |
-
-### ℹ️ 说明
-
-- **登录方式**: 默认使用项目内置自定义登录页（仅输入密码），不再依赖浏览器原生 Basic Auth 弹窗
-- **Selkies 界面语言**: 默认中文，可在登录页切换并记住语言偏好
-
-## 🏗️ 自行构建
+```yaml
+services:
+  chromium-cn:
+    image: ckcode/chromium-cn:latest
+    container_name: chromium-cn
+    shm_size: "1gb"
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+      - CUSTOM_USER=user
+      - PASSWORD=请改成强密码
+      - TITLE=Chromium 浏览器
+      - LC_ALL=zh_CN.UTF-8
+      - LANG=zh_CN.UTF-8
+      - LANGUAGE=zh_CN:zh
+      - SELKIES_UI_TITLE=Chromium 浏览器
+    volumes:
+      - ./config:/config
+    ports:
+      - "1234:3000"
+      - "1235:3001"
+    restart: unless-stopped
+```
 
 ```bash
-# x86_64
-docker build -t chromium-cn -f Dockerfile .
-
-# ARM64 (aarch64)
-docker build -t chromium-cn -f Dockerfile.aarch64 .
-
-# 多架构构建
-docker buildx build --platform linux/amd64,linux/arm64 -t chromium-cn .
+docker compose up -d
 ```
 
-## 📂 文件结构
+## 访问与登录
 
-```
-docker-chromium-cn/
-├── Dockerfile                 # x86_64 构建文件
-├── Dockerfile.aarch64         # ARM64 构建文件
-├── docker-compose.yml         # Docker Compose 配置
-├── README.md                  # 项目说明
-└── root/
-    ├── defaults/
-    │   ├── autostart           # X11 自动启动脚本
-    │   ├── autostart_wayland   # Wayland 自动启动脚本
-    │   ├── menu.xml            # X11 右键菜单（中文）
-    │   └── menu_wayland.xml    # Wayland 右键菜单（中文）
-    └── usr/
-        ├── bin/
-        │   └── wrapped-chromium     # Chromium 启动包装（含中文参数）
-        └── share/selkies/www/
-            └── login.html           # 自定义中文登录页（可选）
-```
+- HTTP：`http://<服务器IP>:1234`
+- HTTPS：`https://<服务器IP>:1235`
+- 默认用户名：`user`
+- 默认密码：`password`
 
-## 🙏 致谢
+> 登录页只需要输入密码（用户名固定使用 `CUSTOM_USER`）。
 
-- [LinuxServer.io](https://www.linuxserver.io/) - 提供优秀的 Docker 基础镜像
-- [Selkies Project](https://github.com/selkies-project/selkies) - 高性能 WebRTC 远程桌面框架
-- [Chromium](https://www.chromium.org/) - 开源浏览器
+## 语言说明
 
-## 📄 许可证
+- 默认中文。
+- 登录页可切换中英文，并记住偏好。
+- Selkies 系统提示（如播放、等待连接）已支持中文。
 
-本项目遵循 [GPL-3.0](LICENSE) 许可证。
+## 完整 Docker 手册
+
+详细部署步骤、参数说明、运维命令见：[`DOCKER.md`](DOCKER.md)
