@@ -1,19 +1,23 @@
+# syntax=docker/dockerfile:1
+
 # Stage 1: Build localized dashboard
 # Use the same base image to avoid pulling new images (network issues)
 FROM ghcr.io/linuxserver/baseimage-selkies:debiantrixie AS builder
-
-# Install build dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    nodejs
 
 WORKDIR /app
 
 # Copy dashboard source code
 COPY selkies-src/addons/selkies-dashboard/package.json ./
-# Install dependencies
-RUN npm install
 
+# Install build dependencies and node modules
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    -o Acquire::Retries=5 \
+    nodejs && \
+    npm install --no-audit --no-fund && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install dependencies
 # Copy source code and build
 COPY selkies-src/addons/selkies-dashboard/ ./
 # Copy all core JS dependencies from gst-web-core
@@ -40,14 +44,15 @@ ENV LC_ALL=zh_CN.UTF-8
 ENV LANG=zh_CN.UTF-8
 ENV LANGUAGE=zh_CN:zh
 
+ARG SELKIES_ICON_URL=https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/chromium-logo.png
+
 RUN \
-  echo "**** add icon ****" && \
-  curl -o \
-    /usr/share/selkies/www/icon.png \
-    https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/chromium-logo.png && \
-  echo "**** install packages ****" && \
-  apt-get update && \
-  apt-get install -y --no-install-recommends \
+  set -eux; \
+  echo "**** add icon ****"; \
+  curl -fsSL "${SELKIES_ICON_URL}" -o /usr/share/selkies/www/icon.png; \
+  echo "**** install packages ****"; \
+  apt-get -o Acquire::Retries=5 update; \
+  apt-get install -y --no-install-recommends -o Acquire::Retries=5 \
     chromium \
     chromium-l10n \
     fonts-noto-cjk \
@@ -55,33 +60,38 @@ RUN \
     fonts-wqy-microhei \
     fonts-wqy-zenhei \
     ibus \
-    ibus-pinyin && \
-  echo "**** generate zh_CN locale ****" && \
-  sed -i '/zh_CN.UTF-8/s/^# //g' /etc/locale.gen 2>/dev/null || true && \
-  locale-gen zh_CN.UTF-8 2>/dev/null || true && \
-  echo "**** cleanup ****" && \
-  apt-get autoclean && \
+    ibus-pinyin; \
+  echo "**** generate zh_CN locale ****"; \
+  sed -i '/zh_CN.UTF-8/s/^# //g' /etc/locale.gen 2>/dev/null || true; \
+  locale-gen zh_CN.UTF-8 2>/dev/null || true; \
+  echo "**** cleanup ****"; \
+  apt-get autoclean; \
   rm -rf \
     /config/.cache \
     /var/lib/apt/lists/* \
     /var/tmp/* \
     /tmp/*
 
-RUN \
-  echo "**** force chinese language for selkies dashboard ****" && \
-  sed -i 's/navigator.language/"zh-CN"/g' /usr/share/selkies/web/assets/index-*.js 2>/dev/null || true
-
 # Copy built localized dashboard from builder stage
-# Copy built localized dashboard
-COPY --from=builder /app/dist /usr/share/selkies/selkies-dashboard/
+# Original dashboard location: /usr/share/selkies/selkies-dashboard/
+# Original web ui location: /usr/share/selkies/web/
+# We assume dashboard assets are shared/compatible with web ui assets
+COPY --from=builder /app/dist/ /usr/share/selkies/selkies-dashboard/
 
-# Also attempting to update web assets if they are identical
-RUN cp -r /usr/share/selkies/selkies-dashboard/assets/* /usr/share/selkies/web/assets/ || true
+# Also copy assets AND index.html to web directory to ensure both UIs use localized version
+# And fix permissions to avoid 403 Forbidden errors
+RUN \
+  set -eux; \
+  cp -a /usr/share/selkies/selkies-dashboard/. /usr/share/selkies/web/; \
+  chown -R www-data:www-data /usr/share/selkies; \
+  for js_file in /usr/share/selkies/web/assets/index-*.js; do \
+    [ -f "${js_file}" ] && sed -i 's/navigator.language/"zh-CN"/g' "${js_file}"; \
+  done
 
 # add local files
 COPY root/ /
 
 # ports and volumes
-EXPOSE 3000
+EXPOSE 3000 3001
 
 VOLUME /config

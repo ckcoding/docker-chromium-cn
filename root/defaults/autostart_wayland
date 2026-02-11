@@ -1,2 +1,5 @@
 #!/bin/bash
-wrapped-chromium --enable-features=UseOzonePlatform --ozone-platform=wayland ${CHROME_CLI}
+
+set -euo pipefail
+
+wrapped-chromium --enable-features=UseOzonePlatform --ozone-platform=wayland ${CHROME_CLI:-}

@@ -530,6 +530,14 @@ const getPrefixedKey = (key) => {
   return prefixedKey;
 };
 
+const DEFAULT_UI_LANG = "zh";
+const normalizeUiLang = (langCode) => {
+  if (typeof langCode !== "string" || !langCode.trim()) {
+    return DEFAULT_UI_LANG;
+  }
+  return langCode.split("-")[0].toLowerCase();
+};
+
 function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isToggleVisible, setIsToggleVisible] = useState(true);
@@ -537,8 +545,8 @@ function Sidebar() {
     setIsOpen(!isOpen);
   };
   const isSecondaryDisplay = displayId === 'display2';
-  const [langCode, setLangCode] = useState("en");
-  const [translator, setTranslator] = useState(() => getTranslator("en"));
+  const [langCode, setLangCode] = useState(DEFAULT_UI_LANG);
+  const [translator, setTranslator] = useState(() => getTranslator(DEFAULT_UI_LANG));
   useEffect(() => {
     window.postMessage({ type: 'sidebarVisibilityChanged', isOpen: isOpen }, window.location.origin);
   }, [isOpen]);
@@ -711,13 +719,33 @@ function Sidebar() {
   };
 
   useEffect(() => {
-    const browserLang = navigator.language || navigator.userLanguage || "en";
-    const primaryLang = browserLang.split("-")[0].toLowerCase();
-    console.log(
-      `Dashboard: Detected browser language: ${browserLang}, using primary: ${primaryLang}`
-    );
-    setLangCode(primaryLang);
-    setTranslator(getTranslator(primaryLang));
+    let resolvedLang = DEFAULT_UI_LANG;
+    let langSource = "default";
+
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const queryLang = searchParams.get("lang");
+      const storedLang = window.localStorage.getItem("selkies_ui_lang");
+
+      if (queryLang) {
+        resolvedLang = normalizeUiLang(queryLang);
+        langSource = "query";
+      } else if (storedLang) {
+        resolvedLang = normalizeUiLang(storedLang);
+        langSource = "storage";
+      }
+
+      window.localStorage.setItem("selkies_ui_lang", resolvedLang);
+    } catch (error) {
+      console.warn(
+        "Dashboard: Unable to read/write language preference from localStorage.",
+        error
+      );
+    }
+
+    console.log(`Dashboard: Using UI language: ${resolvedLang} (source: ${langSource})`);
+    setLangCode(resolvedLang);
+    setTranslator(getTranslator(resolvedLang));
   }, []);
 
   useEffect(() => {

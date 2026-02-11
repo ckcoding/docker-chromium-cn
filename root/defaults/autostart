@@ -1,2 +1,5 @@
 #!/bin/bash
-wrapped-chromium ${CHROME_CLI}
+
+set -euo pipefail
+
+wrapped-chromium ${CHROME_CLI:-}

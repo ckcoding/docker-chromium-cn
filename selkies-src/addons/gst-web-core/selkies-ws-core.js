@@ -162,6 +162,84 @@ window.onload = () => {
 const urlForKey = window.location.href.split('#')[0];
 const storageAppName = urlForKey.replace(/[^a-zA-Z0-9.-_]/g, '_');
 
+const DEFAULT_UI_LANG = 'zh';
+const normalizeUiLang = (langCode) => {
+  if (typeof langCode !== 'string' || !langCode.trim()) {
+    return DEFAULT_UI_LANG;
+  }
+  const normalized = langCode.split('-')[0].toLowerCase();
+  return normalized === 'en' ? 'en' : 'zh';
+};
+const resolveUiLang = () => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return normalizeUiLang(params.get('lang') || window.localStorage.getItem('selkies_ui_lang') || DEFAULT_UI_LANG);
+  } catch (error) {
+    console.warn('Unable to resolve UI language preference, fallback to zh.', error);
+    return DEFAULT_UI_LANG;
+  }
+};
+const uiLang = resolveUiLang();
+const wsMessages = {
+  zh: {
+    playStream: '播放画面',
+    statusConnecting: '连接中...',
+    statusConnectedWaitingMode: '连接成功，等待服务器模式...',
+    statusInitializing: '正在初始化...',
+    statusDisconnected: '连接已断开',
+    statusError: '连接异常',
+    statusConnected: '已连接',
+    errorIdentifyVideo: '错误：无法识别视频流。',
+    connectionTerminated: '连接已终止：{reason}',
+    errorSecondaryDisplayDisabled: '错误：服务端已禁用副屏显示。',
+    wsConnectionError: 'WebSocket 连接错误。',
+    invalidToken: '连接失败：令牌无效',
+    reconnecting: 'WebSocket 已断开，正在尝试重连...',
+    videoErrorReloading: '视频异常，正在刷新并重新同步流...',
+    criticalVideoErrorReloading: '严重视频异常，正在恢复默认设置并刷新...',
+    httpsRequired: '错误：此应用必须通过安全连接（HTTPS）访问，请检查地址。',
+    webcodecsRequired: '错误：当前浏览器不支持视频流所需的 WebCodecs API。',
+    waitingForStream: '正在等待视频流...',
+  },
+  en: {
+    playStream: 'Play Stream',
+    statusConnecting: 'Connecting...',
+    statusConnectedWaitingMode: 'Connection established. Waiting for server mode...',
+    statusInitializing: 'Initializing...',
+    statusDisconnected: 'Disconnected',
+    statusError: 'Connection error',
+    statusConnected: 'Connected',
+    errorIdentifyVideo: 'Error: Could not identify video stream.',
+    connectionTerminated: 'Connection Terminated: {reason}',
+    errorSecondaryDisplayDisabled: 'Error: Secondary displays are disabled on the server.',
+    wsConnectionError: 'WebSocket connection error.',
+    invalidToken: 'Connection Failed: Invalid Token',
+    reconnecting: 'WebSocket disconnected. Attempting to reconnect...',
+    videoErrorReloading: 'A video error occurred. Reloading to re-sync with the stream...',
+    criticalVideoErrorReloading: 'A critical video error occurred. Resetting to default settings and reloading...',
+    httpsRequired: 'Error: This application requires a secure connection (HTTPS). Please check the URL.',
+    webcodecsRequired: 'Error: Your browser does not support the WebCodecs API required for video streaming.',
+    waitingForStream: 'Waiting for stream...',
+  },
+};
+const tWs = (key, vars = {}) => {
+  const dict = wsMessages[uiLang] || wsMessages.zh;
+  const fallback = wsMessages.zh;
+  const template = dict[key] || fallback[key] || key;
+  return template.replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? ''));
+};
+const getStatusText = (statusValue) => {
+  const map = {
+    connecting: tWs('statusConnecting'),
+    connected_waiting_mode: tWs('statusConnectedWaitingMode'),
+    initializing: tWs('statusInitializing'),
+    disconnected: tWs('statusDisconnected'),
+    error: tWs('statusError'),
+    connected: tWs('statusConnected'),
+  };
+  return map[statusValue] || statusValue;
+};
+
 // Set page title
 document.title = 'Selkies';
 fetch('manifest.json')
@@ -439,7 +517,7 @@ const enableClipboard = () => {
 
 const updateStatusDisplay = () => {
   if (statusDisplayElement) {
-    statusDisplayElement.textContent = loadingText || status;
+    statusDisplayElement.textContent = loadingText || getStatusText(status);
   }
 };
 
@@ -904,7 +982,7 @@ const initializeUI = () => {
   statusDisplayElement = document.createElement('div');
   statusDisplayElement.id = 'status-display';
   statusDisplayElement.className = 'status-bar';
-  statusDisplayElement.textContent = 'Connecting...';
+  statusDisplayElement.textContent = tWs('statusConnecting');
   videoContainer.appendChild(statusDisplayElement);
   overlayInput = document.createElement('input');
   overlayInput.type = 'text';
@@ -948,7 +1026,7 @@ const initializeUI = () => {
 
   playButtonElement = document.createElement('button');
   playButtonElement.id = 'playButton';
-  playButtonElement.textContent = 'Play Stream';
+  playButtonElement.textContent = tWs('playStream');
   videoContainer.appendChild(playButtonElement);
   playButtonElement.classList.add('hidden');
   statusDisplayElement.classList.remove('hidden');
@@ -2125,7 +2203,7 @@ function startSharedModeProbingTimeout() {
             console.error("Shared mode: Failed to identify video type after multiple attempts. Entering error state. Stream may not be active or correctly configured on server/primary client.");
             sharedClientState = 'error';
             if (statusDisplayElement) {
-                statusDisplayElement.textContent = 'Error: Could not identify video stream.';
+                statusDisplayElement.textContent = tWs('errorIdentifyVideo');
                 statusDisplayElement.classList.remove('hidden');
             }
         }
@@ -2787,7 +2865,7 @@ function handleDecodedFrame(frame) {
   websocket.onopen = () => {
     console.log('[websockets] Connection opened!');
     status = 'connected_waiting_mode';
-    loadingText = 'Connection established. Waiting for server mode...';
+    loadingText = tWs('statusConnectedWaitingMode');
     updateStatusDisplay();
     window.postMessage({ type: 'trackpadModeUpdate', enabled: trackpadMode }, window.location.origin);
     if (!isSharedMode) {
@@ -3228,7 +3306,7 @@ function handleDecodedFrame(frame) {
             websocket.close();
         }
         if (statusDisplayElement) {
-            statusDisplayElement.textContent = `Connection Terminated: ${reason}`;
+            statusDisplayElement.textContent = tWs('connectionTerminated', { reason });
             statusDisplayElement.classList.remove('hidden');
         }
         return;
@@ -3389,7 +3467,7 @@ function handleDecodedFrame(frame) {
         clientMode = 'websockets';
         console.log('[websockets] Switched to websockets mode.');
         status = 'initializing';
-        loadingText = 'Initializing WebSocket mode...';
+        loadingText = tWs('statusInitializing');
         updateStatusDisplay();
 
         if (!isTokenAuthMode) {
@@ -3472,7 +3550,7 @@ function handleDecodedFrame(frame) {
               if (isAudioPipelineActive) websocket.send('START_AUDIO');
             }
         }
-        loadingText = 'Waiting for stream...';
+        loadingText = tWs('waitingForStream');
         updateStatusDisplay();
         initializationComplete = true;
       }
@@ -3492,7 +3570,7 @@ function handleDecodedFrame(frame) {
               if (displayId !== 'primary' && obj.settings.second_screen && obj.settings.second_screen.value === false) {
                   console.error("Server configuration prohibits secondary displays. This client will not function.");
                   if (statusDisplayElement) {
-                      statusDisplayElement.textContent = 'Error: Secondary displays are disabled on the server.';
+                      statusDisplayElement.textContent = tWs('errorSecondaryDisplayDisabled');
                       statusDisplayElement.classList.remove('hidden');
                   }
                   if (websocket) {
@@ -3799,7 +3877,7 @@ function handleDecodedFrame(frame) {
   websocket.onerror = (event) => {
     console.error('[websockets] Error:', event);
     status = 'error';
-    loadingText = 'WebSocket connection error.';
+    loadingText = tWs('wsConnectionError');
     updateStatusDisplay();
     if (metricsIntervalId) {
       clearInterval(metricsIntervalId);
@@ -3824,14 +3902,14 @@ function handleDecodedFrame(frame) {
         console.error("Server rejected connection: Invalid token. Disabling reconnect.");
         if (reconnectIntervalId) clearInterval(reconnectIntervalId);
         reconnectIntervalId = null;
-        loadingText = 'Connection Failed: Invalid Token';
+        loadingText = tWs('invalidToken');
         updateStatusDisplay();
         return;
     } else if (event.code === 4002) {
         console.log("Server closed connection due to permission change. Reconnecting...");
     }
     status = 'disconnected';
-    loadingText = 'WebSocket disconnected. Attempting to reconnect...';
+    loadingText = tWs('reconnecting');
     updateStatusDisplay();
     if (metricsIntervalId) {
       clearInterval(metricsIntervalId);
@@ -4209,7 +4287,7 @@ function cleanup() {
   showStart = true;
   streamStarted = false;
   inputInitialized = false;
-  if (statusDisplayElement) statusDisplayElement.textContent = 'Connecting...';
+  if (statusDisplayElement) statusDisplayElement.textContent = tWs('statusConnecting');
   if (statusDisplayElement) statusDisplayElement.classList.remove('hidden');
   if (playButtonElement) playButtonElement.classList.remove('hidden');
   if (overlayInput) overlayInput.style.cursor = 'auto';
@@ -4510,7 +4588,7 @@ function initiateFallback(error, context) {
     if (isSharedMode) {
         console.log("Shared client fallback: Reloading page to re-sync with the stream.");
         if (statusDisplayElement) {
-            statusDisplayElement.textContent = 'A video error occurred. Reloading to re-sync with the stream...';
+            statusDisplayElement.textContent = tWs('videoErrorReloading');
             statusDisplayElement.classList.remove('hidden');
         }
     } else {
@@ -4533,7 +4611,7 @@ function initiateFallback(error, context) {
         setIntParam('manual_height', null);
         
         if (statusDisplayElement) {
-            statusDisplayElement.textContent = 'A critical video error occurred. Resetting to default settings and reloading...';
+            statusDisplayElement.textContent = tWs('criticalVideoErrorReloading');
             statusDisplayElement.classList.remove('hidden');
         }
     }
@@ -4547,7 +4625,7 @@ function runPreflightChecks() {
     if (!window.isSecureContext) {
         console.error("FATAL: Not in a secure context. WebCodecs require HTTPS.");
         if (statusDisplayElement) {
-            statusDisplayElement.textContent = 'Error: This application requires a secure connection (HTTPS). Please check the URL.';
+            statusDisplayElement.textContent = tWs('httpsRequired');
             statusDisplayElement.classList.remove('hidden');
         }
         if (playButtonElement) playButtonElement.classList.add('hidden');
@@ -4557,7 +4635,7 @@ function runPreflightChecks() {
     if (typeof window.VideoDecoder === 'undefined') {
         console.error("FATAL: Browser does not support the VideoDecoder API.");
         if (statusDisplayElement) {
-            statusDisplayElement.textContent = 'Error: Your browser does not support the WebCodecs API required for video streaming.';
+            statusDisplayElement.textContent = tWs('webcodecsRequired');
             statusDisplayElement.classList.remove('hidden');
         }
         if (playButtonElement) playButtonElement.classList.add('hidden');

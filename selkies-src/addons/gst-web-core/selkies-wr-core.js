@@ -134,6 +134,64 @@ function InitUI() {
 }
 
 export default function webrtc() {
+	const DEFAULT_UI_LANG = 'zh';
+	const normalizeUiLang = (langCode) => {
+		if (typeof langCode !== 'string' || !langCode.trim()) {
+			return DEFAULT_UI_LANG;
+		}
+		const normalized = langCode.split('-')[0].toLowerCase();
+		return normalized === 'en' ? 'en' : 'zh';
+	};
+	const resolveUiLang = () => {
+		try {
+			const params = new URLSearchParams(window.location.search);
+			return normalizeUiLang(params.get('lang') || window.localStorage.getItem('selkies_ui_lang') || DEFAULT_UI_LANG);
+		} catch (error) {
+			console.warn('Unable to resolve UI language preference, fallback to zh.', error);
+			return DEFAULT_UI_LANG;
+		}
+	};
+	const uiLang = resolveUiLang();
+	const wrMessages = {
+		zh: {
+			playStream: '播放画面',
+			statusConnecting: '连接中...',
+			statusConnected: '已连接',
+			statusDisconnected: '连接已断开',
+			statusFailed: '连接失败',
+			statusChecking: '正在检查连接...',
+			statusClosed: '连接已关闭',
+			statusNew: '正在建立连接...',
+		},
+		en: {
+			playStream: 'Play Stream',
+			statusConnecting: 'Connecting...',
+			statusConnected: 'Connected',
+			statusDisconnected: 'Disconnected',
+			statusFailed: 'Connection failed',
+			statusChecking: 'Checking connection...',
+			statusClosed: 'Connection closed',
+			statusNew: 'Initializing connection...',
+		},
+	};
+	const tWr = (key) => {
+		const dict = wrMessages[uiLang] || wrMessages.zh;
+		const fallback = wrMessages.zh;
+		return dict[key] || fallback[key] || key;
+	};
+	const getStatusText = (statusValue) => {
+		const map = {
+			connecting: tWr('statusConnecting'),
+			connected: tWr('statusConnected'),
+			disconnected: tWr('statusDisconnected'),
+			failed: tWr('statusFailed'),
+			checking: tWr('statusChecking'),
+			closed: tWr('statusClosed'),
+			new: tWr('statusNew'),
+		};
+		return map[statusValue] || statusValue;
+	};
+
 	let appName;
 	let videoBitRate = 8;      // in mbps
 	let videoFramerate = 60;
@@ -264,7 +322,7 @@ export default function webrtc() {
 
 	function updateStatusDisplay() {
 		if (statusDisplayElement) {
-			statusDisplayElement.textContent = status;
+			statusDisplayElement.textContent = getStatusText(status);
 			if (status == 'connected') {
 				// clear the status and show the play button
 				statusDisplayElement.classList.add("hidden");
@@ -1023,14 +1081,14 @@ export default function webrtc() {
 
 			playButtonElement = document.createElement('button');
 			playButtonElement.id = 'playButton';
-			playButtonElement.textContent = 'Play Stream';
+			playButtonElement.textContent = tWr('playStream');
 			playButtonElement.classList.add('hidden');
 			playButtonElement.addEventListener("click", playStream);
 
 			statusDisplayElement = document.createElement('div');
 			statusDisplayElement.id = 'status-display';
 			statusDisplayElement.className = 'status-bar';
-			statusDisplayElement.textContent = 'Connecting...';
+			statusDisplayElement.textContent = tWr('statusConnecting');
 
 			let overlayInput = document.createElement('input');
 			overlayInput.type = 'text';

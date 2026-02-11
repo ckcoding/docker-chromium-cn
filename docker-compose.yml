@@ -2,6 +2,7 @@ services:
   chromium-cn:
     build: .
     container_name: chromium-cn
+    shm_size: "1gb"
     security_opt:
       - seccomp:unconfined
     environment:
@@ -22,7 +23,6 @@ services:
       - SELKIES_UI_TITLE=Chromium 浏览器
     volumes:
       - ./config:/config
-      - /dev/shm:/dev/shm
     ports:
       - "1234:3000"
       - "1235:3001"
